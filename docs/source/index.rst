@@ -96,6 +96,18 @@ License
 The project is licensed under the MIT license.
 
 
+Data format
+-----------
+
+On each node, the 'x' attribute is a floating-point number
+equal to the longitude in degrees; -180.0 <= x <= 180.0.
+
+On each node, the 'y' attribute is a floating-point number
+equal to the latitude in degrees; -90.0 <= y <= 90.0.
+
+See :py:meth:`osmnx.core.get_node` for details.
+
+
 Indices and tables
 ==================
 

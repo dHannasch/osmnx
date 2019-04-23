@@ -795,6 +795,8 @@ def get_polygons_coordinates(geometry):
 def get_node(element):
     """
     Convert an OSM node element into the format for a networkx node.
+    See the node structure at `the OpenStreetMap documentation <https://wiki.openstreetmap.org/wiki/Node>`_,
+    except that we rename 'lat' to 'y' and 'lon' to 'x'.
 
     Parameters
     ----------
@@ -804,6 +806,7 @@ def get_node(element):
     Returns
     -------
     dict
+        converted node
     """
 
     node = {}
