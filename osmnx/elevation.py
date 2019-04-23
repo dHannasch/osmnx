@@ -17,8 +17,12 @@ from .core import get_from_cache
 from .utils import log
 
 
-def add_node_elevations(G, api_key, max_locations_per_batch=350,
-                        pause_duration=0.02): # pragma: no cover
+def add_node_elevations(G, api_key,
+                        max_locations_per_batch=350,
+                        pause_duration=0.02,
+                        url_template='https://maps.googleapis.com/maps/api/elevation/json?locations={}&key={}',
+                        proxies=dict(),
+                        ): # pragma: no cover
     """
     Get the elevation (meters) of each node in the network and add it to the
     node as an attribute.
@@ -34,14 +38,18 @@ def add_node_elevations(G, api_key, max_locations_per_batch=350,
         limit exceeds the max)
     pause_duration : float
         time to pause between API calls
+    url_template : string
+        URL to query for elevation data.
+        Unless you have an unusual network setup, let this default to
+        the standard Google Maps elevation API endpoint.
+    proxies : dict
+        proxies parameter for requests.get;
+        see `the requests documentation <https://2.python-requests.org//en/master/user/advanced/#proxies>`_.
 
     Returns
     -------
     G : networkx multidigraph
     """
-
-    # google maps elevation API endpoint
-    url_template = 'https://maps.googleapis.com/maps/api/elevation/json?locations={}&key={}'
 
     # make a pandas series of all the nodes' coordinates as 'lat,lng'
     # round coorindates to 5 decimal places (approx 1 meter) to be able to fit
@@ -66,7 +74,7 @@ def add_node_elevations(G, api_key, max_locations_per_batch=350,
                 # request the elevations from the API
                 log('Requesting node elevations: {}'.format(url))
                 time.sleep(pause_duration)
-                response = requests.get(url)
+                response = requests.get(url, proxies=proxies)
                 response_json = response.json()
                 save_to_cache(url, response_json)
             except Exception as e:
