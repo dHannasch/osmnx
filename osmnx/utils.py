@@ -498,6 +498,51 @@ def get_nearest_node(G, point, method='haversine', return_dist=False):
         return nearest_node
 
 
+def get_nearest_edge_and_distance(G, point):
+    """
+    Return the nearest edge to a pair of coordinates. Pass in a graph and a tuple
+    with the coordinates. We first get all the edges in the graph. Secondly we compute
+    the euclidean distance from the coordinates to the segments determined by each edge.
+    The last step is to sort the edge segments in ascending order based on the distance
+    from the coordinates to the edge. In the end, the first element in the list of edges
+    will be the closest edge that we will return as a tuple containing the shapely
+    geometry and the u, v nodes.
+
+    Parameters
+    ----------
+    G : networkx multidigraph
+    point : tuple
+        The (lat, lng) or (y, x) point for which we will find the nearest edge
+        in the graph
+
+    Returns
+    -------
+    closest_edge_to_point : tuple ((shapely.geometry, u, v), distance)
+        A geometry object representing the segment and the coordinates of the two
+        nodes that determine the edge section, u and v, the OSM ids of the nodes.
+    """
+    start_time = time.time()
+
+    gdf = graph_to_gdfs(G, nodes=False, fill_edge_geometry=True)
+    graph_edges = gdf[["geometry", "u", "v"]].values.tolist()
+
+    edges_with_distances = [
+        (
+            graph_edge,
+            Point(tuple(reversed(point))).distance(graph_edge[0])
+        )
+        for graph_edge in graph_edges
+    ]
+
+    edges_with_distances = sorted(edges_with_distances, key=lambda x: x[1])
+    closest_edge_to_point = edges_with_distances[0][0]
+
+    geometry, u, v = closest_edge_to_point
+
+    log('Found nearest edge ({}) to point {} in {:,.2f} seconds'.format((u, v), point, time.time() - start_time))
+
+    return edges_with_distances[0]
+
 def get_nearest_edge(G, point):
     """
     Return the nearest edge to a pair of coordinates. Pass in a graph and a tuple
