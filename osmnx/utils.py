@@ -506,7 +506,7 @@ def get_nearest_edge_and_distance(G, point):
     The last step is to sort the edge segments in ascending order based on the distance
     from the coordinates to the edge. In the end, the first element in the list of edges
     will be the closest edge that we will return as a tuple containing the shapely
-    geometry and the u, v nodes.
+    geometry and the u, v nodes along with the distance.
 
     Parameters
     ----------
@@ -517,9 +517,14 @@ def get_nearest_edge_and_distance(G, point):
 
     Returns
     -------
-    closest_edge_to_point : tuple ((shapely.geometry, u, v), distance)
-        A geometry object representing the segment and the coordinates of the two
-        nodes that determine the edge section, u and v, the OSM ids of the nodes.
+    closest_edge_to_point : tuple ((geometry, u, v), distance)
+        The nearest edge together with the distance to the nearest edge.
+    geometry : Shapely geometry object
+        A geometry object representing the segment
+    u,v : int
+        the OSM IDs of the two nodes that determine the edge section
+    distance : float
+        the distance to the edge
     """
     start_time = time.time()
 
