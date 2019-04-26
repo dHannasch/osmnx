@@ -135,47 +135,21 @@ def add_node_elevations(G, api_key,
     G : networkx multidigraph
     """
 
-    # make a pandas series of all the nodes' coordinates as 'lat,lng'
+    node_latitude_longitude_triples = ((node, data['y'], data['x']) for (node, data) in G.nodes(data=True))
+    df = pd.DataFrame(node_latitude_longitude_triples, columns=('node_id', 'latitude', 'longitude'))
+    assert df.node_id.dtype == np.int64
+    assert df.latitude.dtype == np.float64
+    assert df.longitude.dtype == np.float64
+    df.set_index('node_id', inplace=True)
     # round coorindates to 5 decimal places (approx 1 meter) to be able to fit
     # in more locations per API call
-    node_points = pd.Series({node:'{:.5f},{:.5f}'.format(data['y'], data['x']) for node, data in G.nodes(data=True)})
-    log('Requesting node elevations from the API in {} calls.'.format(math.ceil(len(node_points) / max_locations_per_batch)))
-
-    # break the series of coordinates into chunks of size max_locations_per_batch
-    # API format is locations=lat,lng|lat,lng|lat,lng|lat,lng...
-    results = []
-    for i in range(0, len(node_points), max_locations_per_batch):
-        chunk = node_points.iloc[i : i + max_locations_per_batch]
-        locations = '|'.join(chunk)
-        url = url_template.format(locations, api_key)
-
-        # check if this request is already in the cache (if global use_cache=True)
-        cached_response_json = get_from_cache(url)
-        if cached_response_json is not None:
-            response_json = cached_response_json
-        else:
-            try:
-                # request the elevations from the API
-                log('Requesting node elevations: {}'.format(url))
-                time.sleep(pause_duration)
-                response = requests.get(url, proxies=proxies)
-                response_json = response.json()
-                save_to_cache(url, response_json)
-            except Exception as e:
-                log(e)
-                log('Server responded with {}: {}'.format(response.status_code, response.reason))
-
-        # append these elevation results to the list of all results
-        results.extend(response_json['results'])
-
-    # sanity check that all our vectors have the same number of elements
-    if not (len(results) == len(G.nodes()) == len(node_points)):
-        raise Exception('Graph has {} nodes but we received {} results from the elevation API.'.format(len(G.nodes()), len(results)))
-    else:
-        log('Graph has {} nodes and we received {} results from the elevation API.'.format(len(G.nodes()), len(results)))
-
-    df = pd.DataFrame(node_points, columns=['node_points'])
-    df['elevation'] = [result['elevation'] for result in results]
+    df = fetch_elevations_for_latitude_longitude_pairs(df, dict(api_key=api_key),
+                                                       decimal_places_to_round=5,
+                                                       max_locations_per_batch=max_locations_per_batch,
+                                                       pause_duration=pause_duration,
+                                                       url_template=url_template,
+                                                       proxies=proxies,
+                                                       )
 
     # sanity check that all our vectors have the same number of elements
     if not (len(df['elevation']) == len(G.nodes())):
