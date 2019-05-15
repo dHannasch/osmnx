@@ -772,12 +772,55 @@ class KDTreeIndex(SpatialIndex):
     def _build_tree(self):
         """
         Build a k-d tree for euclidean nearest node search
+
+        Info
+        ----
+        This method creates equally distanced points along the edges, to be
+        used in a k-dimensional tree search to identify which is nearest.
+        Because the only candidate points are the equally spaced points,
+        we will not get the exact nearest point along the edge
+        (where the distance vector is perpendicular to the edge), but
+        the smaller the *dist* parameter, the closer the solution will be.
+
+        Code is adapted from an answer by JHuw from this original question:
+        https://gis.stackexchange.com/questions/222315/geopandas-find-nearest
+        -point-in-other-dataframe
         """
         # Prepare btree arrays
         nbdata = np.array(list(zip(self.extended['Series'].apply(lambda x: x.x),
                                    self.extended['Series'].apply(lambda x: x.y))))
         btree = cKDTree(data=nbdata, compact_nodes=True, balanced_tree=True)
         return btree
+
+    def get_nearest_edge_distances(self, X, Y):
+        """
+        Query the tree for the nearest edge (and associated distance)
+        to each point (x,y).
+
+        Parameters
+        ----------
+        X : list-like
+            The vector of longitudes or x's for which we will find the nearest
+            edge in the graph. For projected graphs, use the projected coordinates,
+            usually in meters.
+        Y : list-like
+            The vector of latitudes or y's for which we will find the nearest
+            edge in the graph. For projected graphs, use the projected coordinates,
+            usually in meters.
+
+        Returns
+        -------
+        ne : GeoDataFrame
+            array of nearest edges represented by their startpoint and endpoint
+            OSM node IDs (columns 'u' and 'v'),
+            and the distances (column 'distance').
+        """
+        points = np.array([X, Y]).T
+        distances, idx = self.tree.query(points, k=1)  # Returns ids of closest point
+        eidx = self.extended.loc[idx, 'index']
+        ne = self.edges.loc[eidx, ['geometry', 'u', 'v']]
+        ne['distance'] = distances
+        return ne
 
     def get_nearest_edges(self, X, Y):
         """
@@ -795,9 +838,7 @@ class KDTreeIndex(SpatialIndex):
             usually in meters.
         """
         points = np.array([X, Y]).T
-        dist, idx = self.tree.query(points, k=1)  # Returns ids of closest point
-        eidx = self.extended.loc[idx, 'index']
-        ne = self.edges.loc[eidx, ['geometry', 'u', 'v']].values.tolist()
+        ne = self.get_nearest_edge_distances(X, Y)[['geometry', 'u', 'v']].values.tolist()
         return ne
 
 
